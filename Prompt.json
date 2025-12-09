@@ -1,0 +1,131 @@
+{
+    "project_meta": {
+        "name": "LogicSim - Web-based Logic Circuit Simulator",
+        "type": "Single File React Application",
+        "primary_language": "TypeScript (React .tsx)",
+        "styling": "Tailwind CSS (via CDN & Polyfill)",
+        "icons": "Lucide React",
+        "backend": "Firebase (Auth & Firestore)"
+    },
+    "core_concepts": {
+        "simulation_model": "Discrete Event / Tick-based Logic Propagation",
+        "rendering_engine": "HTML5 Canvas 2D API",
+        "coordinate_system": "Infinite Pan/Zoom 2D Grid"
+    },
+    "data_structures": {
+        "NodeType": "Enum: 'AND' | 'OR' | 'NOT' | 'XOR' | 'NAND' | 'SWITCH' | 'LIGHT' | 'CLOCK' | 'BUFFER' | 'GROUP' | 'IC'",
+        "Vector2": "{ x: number, y: number }",
+        "Pin": {
+            "description": "Connection point on a node",
+            "fields": {
+                "id": "string (unique composite key)",
+                "nodeId": "string",
+                "type": "'input' | 'output'",
+                "index": "number",
+                "value": "boolean"
+            }
+        },
+        "Wire": {
+            "description": "Connection between two pins",
+            "fields": {
+                "id": "string",
+                "sourceNodeId": "string",
+                "sourcePinIndex": "number",
+                "targetNodeId": "string",
+                "targetPinIndex": "number",
+                "state": "boolean (high/low)"
+            }
+        },
+        "LogicNode": {
+            "description": "Base component in the circuit",
+            "fields": {
+                "id": "string",
+                "type": "NodeType",
+                "position": "Vector2",
+                "inputs": "boolean[] (state of input pins)",
+                "outputs": "boolean[] (state of output pins)",
+                "label": "string (optional user label)",
+                "color": "string (optional output wire color)",
+                "groupId": "string (optional parent group ID)",
+                "width": "number (dynamic width for Groups/ICs)",
+                "height": "number (dynamic height for Groups/ICs)",
+                "internals": "Object (stores child nodes/wires for ICs)",
+                "compiledFunction": "string (JavaScript function body for accelerated IC logic)",
+                "equations": "string[] (Human readable boolean algebra for UI display)",
+                "ioMap": "{ inputs: string[], outputs: string[] } (Pin labels for ICs)",
+                "truthTable": "Record<string, number[]> (Legacy/Fallback LUT)"
+            }
+        }
+    },
+    "architecture_modules": {
+        "CircuitEngine": {
+            "role": "Central controller class managing state, simulation, and rendering (decoupled from React render cycle except for triggers)",
+            "properties": {
+                "nodes": "Map<string, LogicNode>",
+                "wires": "Wire[]",
+                "viewport": "{ x, y, zoom }",
+                "interactionMode": "Enum: NONE, DRAG_NODE, SELECT_AREA, WIRING, PAN",
+                "fnCache": "Map<string, Function> (Runtime cache for compiled IC code)"
+            },
+            "methods": {
+                "tick(timestamp)": "Main simulation step. Updates Clocks, propagates Wires, computes Logic Gates, executes IC compiled functions.",
+                "render(ctx)": "Draws Grid, Groups, Wires (Bezier curves), Active Temp Wire, Nodes, and Minimap.",
+                "packGroupToIC()": "Converts selected Group into a single 'IC' node. Generates 'compiledFunction' string by traversing the subgraph and creating a JS function string with stability loops.",
+                "unpackICToGroup()": "Reverses packing. Restores internal nodes and wires to the main graph.",
+                "getInputCount/getOutputCount": "Determines pin count based on Node Type or IC configuration."
+            }
+        },
+        "ReactUI": {
+            "Layout": "Flexbox layout. Left Toolbar (Tools), Top Header (Sim Controls), Main Canvas (Viewport), Right Panel (Properties).",
+            "Components": {
+                "Toolbar": "Vertical list of gates/tools. Sets 'tool' state.",
+                "Canvas": "Wrapper for <canvas> element. Handles PointerEvents (Down, Move, Up, ContextMenu).",
+                "PropertiesPanel": "Edit Node Label, Color, IC Pin names. Displays Logic Equations/Truth Table.",
+                "LibraryPanel": "Slide-out drawer showing saved ICs from Firestore.",
+                "ContextMenu": "Right-click menu for Delete, Duplicate, Group/Ungroup, Pack/Unpack, Save to Library."
+            }
+        },
+        "Persistence_Layer": {
+            "Backend": "Firebase Firestore",
+            "Auth": "Anonymous Auth or Custom Token",
+            "Structure": {
+                "CollectionPath": "artifacts/{appId}/users/{userId}/components",
+                "Document": "JSON dump of LogicNode properties (stripped of undefined values via JSON.parse/stringify)."
+            },
+            "Features": "Save custom ICs to cloud, Load ICs from cloud, Drag & Drop instantiation from library."
+        }
+    },
+    "logic_compilation_strategy": {
+        "goal": "Optimize performance for complex nested chips (ICs) and allow >8 input logic.",
+        "process": [
+            "1. Identify Inputs (Switches) and Outputs (Lights) within a Group.",
+            "2. Map internal nodes to variable names (v_nodeID).",
+            "3. Generate a JavaScript code string:",
+            "   - Initialize variables to 0.",
+            "   - Create a stability loop (3 iterations) to handle feedback/latches.",
+            "   - Inside loop: Generate boolean logic expressions for each gate (e.g., v_1 = (v_2 + v_3) > 0 ? 1 : 0).",
+            "   - Return array of Output states.",
+            "4. Generate Boolean Algebra Strings for UI display (recursive tree traversal)."
+        ]
+    },
+    "visual_style": {
+        "theme": "Dark Mode (Gray/Black palette)",
+        "colors": {
+            "wires": {
+                "on": "#4ade80 (Green/Custom)",
+                "off": "#4b5563 (Gray)"
+            },
+            "gates": {
+                "body": "#374151",
+                "border": "#9ca3af",
+                "selected": "#60a5fa"
+            }
+        },
+        "gates": {
+            "AND/NAND": "D-shape",
+            "OR/XOR": "Curved shield shape",
+            "NOT/BUFFER": "Triangle shape",
+            "IC": "Rectangular Box with top label and side pins"
+        }
+    }
+}
